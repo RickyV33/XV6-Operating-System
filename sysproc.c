@@ -90,7 +90,8 @@ sys_uptime(void)
   return xticks;
 }
 
-// gets the current time of day
+// gets the current time of day and stores it in date if it is there
+// returns -1 if it failes
 int
 sys_date(void) 
 {

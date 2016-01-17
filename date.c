@@ -6,15 +6,17 @@ int
 main(int argc, char * argv[]) 
 {
     struct rtcdate r;
-
+    char * months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", 
+        "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+\
     if (date(&r)) {
         printf(2, "date_failed");
         exit();
     }
 
-    ///DO THINGS HERE
-    printf(1, "%d/%d/%d %d:%d:%d\n", r.month, r.day, r.year,
-            r.hour, r.minute, r.second);
+    //Prints the date in this specified format
+    printf(1, "%s %d, %d %d:%d:%d UTC\n", months[r.month-1], r.day, r.year, r.hour, 
+            r.minute, r.second);
 
     exit();
 }
