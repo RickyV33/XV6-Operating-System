@@ -8,7 +8,7 @@ main(int argc, char * argv[])
     struct rtcdate r;
     char * months[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", 
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-\
+    
     if (date(&r)) {
         printf(2, "date_failed");
         exit();
