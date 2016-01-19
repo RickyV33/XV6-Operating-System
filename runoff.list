@@ -75,3 +75,6 @@ sh.c
 bootasm.S
 bootmain.c
 
+
+# commands
+time.c
