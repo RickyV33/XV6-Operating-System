@@ -15,7 +15,7 @@ main(int argc, char * argv[])
     char * args[MAXARGS]; //Stores our arguments
     struct rtcdate t1, t2; //Stores our start time and our end time respectively
     int pid; //Stores our process ID
-    uint time1, time2; //Stores our elapsed minutes and seconds respectively
+    uint elapsed_minute, elapsed_second; //Stores our elapsed minutes and seconds respectively
     
     if (argc > (MAXARGS-1)) {
         printf(stderr,"Error: too many args\n");
@@ -54,12 +54,12 @@ main(int argc, char * argv[])
 
     //Calculate elapsed time
     if (t1.second > t2.second) {
-        time1 = t2.minute - t1.minute;
-        time2 = t1.second - t2.second;
+        elapsed_minute = t2.minute - t1.minute;
+        elapsed_second = t1.second - t2.second;
     } else{
-        time1 = t2.minute - t1.minute;
-        time2 = t2.second - t1.second;
+        elapsed_minute = t2.minute - t1.minute;
+        elapsed_second = t2.second - t1.second;
     }
-    printf(stdout, "Elapsed time: %dm %ds\n", time1, time2);
+    printf(stdout, "Elapsed time: %dm %ds\n", elapsed_minute, elapsed_second);
     exit();
 }
