@@ -16,7 +16,7 @@ main(int argc, char * argv[])
     struct rtcdate t1, t2; //Stores our start time and our end time respectively
     int pid; //Stores our process ID
     uint elapsed_minute, elapsed_second; //Stores our elapsed minutes and seconds respectively
-    
+
     if (argc > (MAXARGS-1)) {
         printf(stderr,"Error: too many args\n");
         exit();

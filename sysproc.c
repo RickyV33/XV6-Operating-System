@@ -91,7 +91,7 @@ sys_uptime(void)
 }
 
 // gets the current time of day and stores it in date if it is there
-// returns -1 if it failes
+// returns -1 if it fails, 0 if it was successful
 int
 sys_date(void) 
 {
