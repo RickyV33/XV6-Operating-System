@@ -10,7 +10,7 @@ main(int argc, char * argv[])
         "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
     
     if (date(&r)) {
-        printf(2, "date_failed");
+        printf(2, "Error: date failed");
         exit();
     }
 

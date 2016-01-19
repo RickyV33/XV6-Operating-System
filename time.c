@@ -4,6 +4,10 @@
 
 #define MAXARGS 20
 
+//Stores the values for output and error streams
+int stderr = 2;
+int stdout = 1;
+
 int
 main(int argc, char * argv[]) 
 {
@@ -14,8 +18,8 @@ main(int argc, char * argv[])
     uint time1, time2; //Stores our elapsed minutes and seconds respectively
     
     if (argc > (MAXARGS-1)) {
-        printf(2,"Error: too many args\n");
-        return -1;
+        printf(stderr,"Error: too many args\n");
+        exit();
     }
 
     //Copy the arguments from argv into args
@@ -26,24 +30,25 @@ main(int argc, char * argv[])
     
     //Get the start time
     if (date(&t1) != 0) {
-        printf(2, "Error: getting the time failed\n");
-        return -1;
+        printf(stderr, "Error: getting the time failed\n");
+        exit();
     }
 
     //Create a new process
     pid = fork();
     if (pid < 0) {
-        printf(2, "Error: fork failed\n");
-        return -1;
+        printf(stderr, "Error: fork failed\n");
+        exit();
     } else if (pid == 0) { //Child process
         exec(args[0], args);
+        printf(stderr, "Error: execution failed\n");
         exit();
     } else { //Parent process
         wait();
         //Get our end time
         if (date(&t2) != 0) {
-            printf(2, "Error: getting the time failed\n");
-            return -1;
+            printf(stderr, "Error: getting the time failed\n");
+            exit();
         }
     }
 
@@ -55,7 +60,6 @@ main(int argc, char * argv[])
         time1 = t2.minute - t1.minute;
         time2 = t2.second - t1.second;
     }
-    printf(1, "Elapsed time: %dm %ds\n", time1, time2);
+    printf(stdout, "Elapsed time: %dm %ds\n", time1, time2);
     exit();
-    return 0;
 }
