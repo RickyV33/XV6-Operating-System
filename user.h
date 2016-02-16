@@ -1,5 +1,6 @@
 struct stat;
 struct rtcdate;
+struct uproc;
 
 // system calls
 int fork(void);
@@ -24,6 +25,12 @@ char* sbrk(int);
 int sleep(int);
 int uptime(void);
 int date(struct rtcdate*);
+int getuid(void); //UID of the current process
+int getgid(void); //GID of the current process
+int getppid(void); //Process ID of the parent process
+int setuid(int); //Set UID to int
+int setgid(int); //Set GID to int
+int getprocs(int, struct uproc*); //Retrieves the current processes up to max
 
 // ulib.c
 int stat(char*, struct stat*);

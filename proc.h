@@ -1,5 +1,7 @@
 // Segments in proc->gdt.
 #define NSEGS     7
+#define USERID    20
+#define GROUPID   10
 
 // Per-CPU state
 struct cpu {
@@ -58,6 +60,8 @@ struct proc {
   char *kstack;                // Bottom of kernel stack for this process
   enum procstate state;        // Process state
   int pid;                     // Process ID
+  uint gid;                    // Group Process ID
+  uint uid;                    // User Process ID
   struct proc *parent;         // Parent process
   struct trapframe *tf;        // Trap frame for current syscall
   struct context *context;     // swtch() here to run process
@@ -67,6 +71,7 @@ struct proc {
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
 };
+
 
 // Process memory is laid out contiguously, low addresses first:
 //   text

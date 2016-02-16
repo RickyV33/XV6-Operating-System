@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include "uproc.h"
 
 struct {
   struct spinlock lock;
@@ -95,6 +96,8 @@ userinit(void)
   p->tf->eflags = FL_IF;
   p->tf->esp = PGSIZE;
   p->tf->eip = 0;  // beginning of initcode.S
+  p->uid = USERID;
+  p->gid = GROUPID;
 
   safestrcpy(p->name, "initcode", sizeof(p->name));
   p->cwd = namei("/");
@@ -145,6 +148,10 @@ fork(void)
   np->sz = proc->sz;
   np->parent = proc;
   *np->tf = *proc->tf;
+
+    //Set guid and uid to np from proc
+    np->gid = proc->gid;
+    np->uid = proc->uid;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -428,6 +435,7 @@ kill(int pid)
   return -1;
 }
 
+
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
@@ -455,7 +463,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
+    cprintf("%d %d %d %s %s", p->pid, p->uid, p->gid, state, p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -463,4 +471,36 @@ procdump(void)
     }
     cprintf("\n");
   }
+}
+
+int
+getProcInfo(int max, struct uproc *table) {
+  static char *states[] = {
+  [SLEEPING]  "SLEEPING",
+  [RUNNABLE]  "RUNNABLE",
+  [RUNNING]   "RUNNING ",
+  };
+  struct proc *p;
+  int i;
+
+ //Lock
+  acquire(&ptable.lock);
+    //Iterate through each process picking out only the ones it needs
+  for(p = ptable.proc, i = 0; i < max && p < &ptable.proc[NPROC]; p++){
+    if(p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING) {
+        table[i].pid = p->pid;
+        table[i].uid = p->uid;
+        table[i].gid = p->gid;
+        if (p->parent) 
+            table[i].ppid = p->parent->pid;
+         else 
+            table[i].ppid = p->pid;
+        strncpy(table[i].state, states[p->state], sizeof(table[i].state));
+        table[i].size = p->sz;
+        strncpy(table[i].name, p->name, sizeof(table[i].name));
+        ++i;
+    }
+  }
+  release(&ptable.lock);
+  return i;
 }

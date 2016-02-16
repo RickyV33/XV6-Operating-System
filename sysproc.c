@@ -6,6 +6,7 @@
 #include "memlayout.h"
 #include "mmu.h"
 #include "proc.h"
+#include "uproc.h"
 
 int
 sys_fork(void)
@@ -101,4 +102,56 @@ sys_date(void)
     return -1;
   cmostime(date);
   return 0;
+}
+
+int
+sys_getuid(void) {
+  return proc->uid;
+
+}
+
+int
+sys_getgid(void) {
+  return proc->gid;
+
+}
+
+int
+sys_getppid(void) {
+    return proc->parent->pid;
+}
+
+int
+sys_setuid(void) {
+    int uid;
+
+    if (argint(0, &uid) < 0) {
+        return -1;
+    }
+   proc->uid = uid; 
+   return 0;
+}
+
+int
+sys_setgid(void) {
+    int gid;
+
+    if (argint(0, &gid) < 0) {
+        return -1;
+    }
+   proc->gid = gid; 
+   return 0;
+}
+
+//Used to get populate the proc table in the kernel
+// Based off Mark's example
+int
+sys_getprocs(void) {
+    int max;
+    struct uproc * table;
+
+    if (argint(0, (void*)&max) < 0 || argptr(1, (void*)&table, sizeof(*table)) < 0) {
+        return -1;
+    }
+    return getProcInfo(max, table);
 }
