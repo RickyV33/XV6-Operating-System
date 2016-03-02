@@ -9,5 +9,6 @@ struct uproc {
   int ppid;                      // Parent Process ID   
   char state[16];                  // Process state
   uint size;                     // Size of process memory (bytes)
+  int priority;                 //Stores the process priority
   char name[16];                 // Process name (debugging)
 };

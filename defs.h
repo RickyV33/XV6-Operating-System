@@ -120,6 +120,14 @@ int             wait(void);
 void            wakeup(void*);
 void            yield(void);
 int             getProcInfo(int, struct uproc*);
+int             setPriority(int, int);
+#ifdef CS333_SCHEDULER
+void            initFreeList();
+void            putOnReadyList(struct proc *, int);
+void            removeFromReadyList(struct proc *, int);
+void            putOnFreeList(struct proc *);
+void            resetReadyList();
+#endif
 
 // swtch.S
 void            swtch(struct context**, struct context*);

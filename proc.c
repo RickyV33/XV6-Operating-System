@@ -11,7 +11,13 @@
 struct {
   struct spinlock lock;
   struct proc proc[NPROC];
+#ifdef CS333_SCHEDULER
+  struct proc * readyList[SIZE];
+  struct proc * freeList;
+  uint timeToReset;
+#endif
 } ptable;
+
 
 static struct proc *initproc;
 
@@ -39,9 +45,18 @@ allocproc(void)
   char *sp;
 
   acquire(&ptable.lock);
+#ifdef CS333_SCHEDULER
+  p = ptable.freeList;
+  if (p) {
+      ptable.freeList = ptable.freeList->next;
+      p->next = 0;
+      goto found;
+  }
+#else
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
     if(p->state == UNUSED)
       goto found;
+#endif
   release(&ptable.lock);
   return 0;
 
@@ -53,6 +68,11 @@ found:
   // Allocate kernel stack.
   if((p->kstack = kalloc()) == 0){
     p->state = UNUSED;
+#ifdef CS333_Scheduler
+    acquire(&ptable.lock);
+    putOnFreeList(p);
+    release(&ptable.lock);
+#endif
     return 0;
   }
   sp = p->kstack + KSTACKSIZE;
@@ -71,6 +91,7 @@ found:
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint)forkret;
 
+
   return p;
 }
 
@@ -81,6 +102,12 @@ userinit(void)
 {
   struct proc *p;
   extern char _binary_initcode_start[], _binary_initcode_size[];
+#ifdef CS333_SCHEDULER
+  acquire(&ptable.lock);
+  initFreeList();
+  ptable.timeToReset = COUNT;
+  release(&ptable.lock);
+#endif
   
   p = allocproc();
   initproc = p;
@@ -103,7 +130,128 @@ userinit(void)
   p->cwd = namei("/");
 
   p->state = RUNNABLE;
+#ifdef CS333_SCHEDULER
+  acquire(&ptable.lock);
+  int i;
+  for (i = 0; i < 3; ++i) {
+      ptable.readyList[i] = 0;
+  }
+  putOnReadyList(p, p->priority);
+  release(&ptable.lock);
+#endif
 }
+
+#ifdef CS333_SCHEDULER
+// Initializes the free list by iterating through the process
+// list and adding all UNUSED process to the head of the list
+void
+initFreeList() {
+    struct proc * p;
+  ptable.freeList = 0;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if(p->state == UNUSED) {
+          p->next = ptable.freeList;
+          ptable.freeList = p;
+      }
+      p->priority = DEFAULTPRIO;
+  }
+}
+
+//Adds an UNUSED process to the free list at the tail of the list
+void
+putOnFreeList(struct proc * p) {
+    struct proc * current = ptable.freeList;
+
+    // If the list is empty
+    if (current == 0) {
+        ptable.freeList = p;
+        ptable.freeList->next = 0;
+    }
+    //Add to end of list
+    else {
+        while (current->next != 0){
+            current = current ->next;
+        }
+        p->next = 0;
+        current->next = p;
+    }
+}
+
+//Adds an RUNNABLE process to the ready list at the tail of the list
+void
+putOnReadyList(struct proc * p, int priority) {
+    struct proc * current = ptable.readyList[priority];
+
+    // If the list is empty
+    if (current == 0) {
+        ptable.readyList[priority] = p;
+        ptable.readyList[priority]->next = 0;
+    } 
+    //Add to end of list
+    else {
+        while (current->next != 0){
+            current = current ->next;
+        }
+        p->next = 0;
+        current->next = p;
+    }
+}
+
+void 
+removeFromReadyList(struct proc * p, int priority) {
+    struct proc * current = ptable.readyList[priority];
+    
+    if (current == 0)
+        return;
+    // If it's the first item in the list, remove it
+    if (current == p) {
+        ptable.readyList[priority] = ptable.readyList[priority]->next;
+        p->next = 0;
+    } 
+    //Search for it in the middle of the list
+    else {
+        while (current->next) {
+            if (current->next == p){
+                current->next = current->next->next;
+                p->next = 0;
+            }
+            current = current->next;
+        }
+    }
+}
+
+void
+resetReadyList() {
+    struct proc * p;
+    struct proc * current = ptable.readyList[HIGH];
+    struct proc * next;
+
+    while (current != 0) {
+        next = current->next;
+        removeFromReadyList(current, current->priority);
+        current->priority = DEFAULTPRIO;
+        putOnReadyList(current, current->priority);
+        current = next;
+    }
+
+    current = ptable.readyList[LOW];
+    while (current != 0) {
+        next = current->next;
+        removeFromReadyList(current, current->priority);
+        current->priority = DEFAULTPRIO;
+        putOnReadyList(current, current->priority);
+        current = next; 
+    }
+
+//Reset running and sleeping priorities 
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if (p->state == RUNNING || p->state == SLEEPING) {
+          p->priority = DEFAULTPRIO;
+      }
+  }
+
+}
+#endif
 
 // Grow current process's memory by n bytes.
 // Return 0 on success, -1 on failure.
@@ -143,6 +291,11 @@ fork(void)
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
+#ifdef CS333_SCHEDULER
+    acquire(&ptable.lock);
+    putOnFreeList(np);
+    release(&ptable.lock);
+#endif
     return -1;
   }
   np->sz = proc->sz;
@@ -152,6 +305,7 @@ fork(void)
     //Set guid and uid to np from proc
     np->gid = proc->gid;
     np->uid = proc->uid;
+    np->priority = DEFAULTPRIO;
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
@@ -168,6 +322,9 @@ fork(void)
   // lock to force the compiler to emit the np->state write last.
   acquire(&ptable.lock);
   np->state = RUNNABLE;
+#ifdef CS333_SCHEDULER
+  putOnReadyList(np, np->priority);
+#endif
   release(&ptable.lock);
   
   return pid;
@@ -242,6 +399,9 @@ wait(void)
         freevm(p->pgdir);
         p->state = UNUSED;
         p->pid = 0;
+#ifdef USE_CS333_SCHEDULER
+       putOnFreeList(p);
+#endif
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
@@ -261,6 +421,44 @@ wait(void)
   }
 }
 
+#ifdef CS333_SCHEDULER
+void
+scheduler(void){
+    //struct proc *p;
+    
+    int i;
+    struct proc *p;
+
+    for(;;){
+        // Enable interrupts on this processor.
+        sti();
+        acquire(&ptable.lock);
+        for (i = 0; i < SIZE; ++i) { 
+            if (ptable.readyList[i] == 0)
+                continue;
+            p = ptable.readyList[i];
+            removeFromReadyList(p, p->priority);
+            // Set it back to priority 0 (increments at the end of loop)
+            if (i != 2)
+                i = -1;
+            //Decrement counter
+            --ptable.timeToReset;
+            if (ptable.timeToReset == 0) {
+                //cprintf("Reseting list\n");
+                resetReadyList();
+                ptable.timeToReset = COUNT;
+            }
+            proc = p;
+            switchuvm(p);
+            p->state = RUNNING;
+            swtch(&cpu->scheduler, proc->context);
+            switchkvm();
+            proc = 0;
+        }
+        release(&ptable.lock);
+    }
+}
+#else
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -270,7 +468,7 @@ wait(void)
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 void
-scheduler(void)
+old_scheduler(void)
 {
   struct proc *p;
 
@@ -301,6 +499,7 @@ scheduler(void)
 
   }
 }
+#endif
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state.
@@ -328,6 +527,9 @@ yield(void)
 {
   acquire(&ptable.lock);  //DOC: yieldlock
   proc->state = RUNNABLE;
+#ifdef CS333_SCHEDULER
+  putOnReadyList(proc, proc->priority);
+#endif
   sched();
   release(&ptable.lock);
 }
@@ -398,9 +600,14 @@ wakeup1(void *chan)
 {
   struct proc *p;
 
-  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if(p->state == SLEEPING && p->chan == chan)
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p->state == SLEEPING && p->chan == chan) {
       p->state = RUNNABLE;
+#ifdef CS333_SCHEDULER
+      putOnReadyList(p, p->priority);
+#endif
+    }
+  }
 }
 
 // Wake up all processes sleeping on chan.
@@ -425,8 +632,12 @@ kill(int pid)
     if(p->pid == pid){
       p->killed = 1;
       // Wake process from sleep if necessary.
-      if(p->state == SLEEPING)
+      if(p->state == SLEEPING) {
         p->state = RUNNABLE;
+#ifdef CS333_SCHEDULER
+        putOnReadyList(p, p->priority);
+#endif
+      }
       release(&ptable.lock);
       return 0;
     }
@@ -463,7 +674,7 @@ procdump(void)
       state = states[p->state];
     else
       state = "???";
-    cprintf("%d %d %d %s %s", p->pid, p->uid, p->gid, state, p->name);
+    cprintf("%d %d %d %d %s %s", p->pid, p->uid, p->gid, p->priority, state, p->name);
     if(p->state == SLEEPING){
       getcallerpcs((uint*)p->context->ebp+2, pc);
       for(i=0; i<10 && pc[i] != 0; i++)
@@ -487,10 +698,11 @@ getProcInfo(int max, struct uproc *table) {
   acquire(&ptable.lock);
     //Iterate through each process picking out only the ones it needs
   for(p = ptable.proc, i = 0; i < max && p < &ptable.proc[NPROC]; p++){
-    if(p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING) {
+    if(p->state == ZOMBIE || p->state == RUNNING || p->state == RUNNABLE || p->state == SLEEPING) {
         table[i].pid = p->pid;
         table[i].uid = p->uid;
         table[i].gid = p->gid;
+        table[i].priority = p->priority;
         if (p->parent) 
             table[i].ppid = p->parent->pid;
          else 
@@ -503,4 +715,36 @@ getProcInfo(int max, struct uproc *table) {
   }
   release(&ptable.lock);
   return i;
+}
+
+int
+setPriority(int pid, int priority) {
+    struct proc *p;
+    int oldPriority;
+    int found = -1;
+
+  acquire(&ptable.lock);
+  //Iterate through each process picking out only the ones it needs
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if (p->pid == pid) {
+          oldPriority = p->priority;
+          //cprintf("FOUND PID %d   ", pid);
+          //cprintf("OLD : %d    NEW : %d\n", oldPriority, priority);
+        // If you are setting it to the same priority, then just leave it where it's at
+          if (oldPriority == priority){
+             // cprintf("Skipped adding to new queue");
+              release(&ptable.lock);
+              return 0;
+          }
+          p->priority = priority;
+          if (p->state == RUNNABLE) {
+              removeFromReadyList(p, oldPriority);
+              putOnReadyList(p, priority);
+          } 
+          found = 0;
+          break;
+      }
+  }
+  release(&ptable.lock);
+  return found;
 }

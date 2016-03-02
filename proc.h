@@ -1,7 +1,15 @@
 // Segments in proc->gdt.
+#define CS33_SCHEDULER
 #define NSEGS     7
 #define USERID    20
 #define GROUPID   10
+#ifdef CS333_SCHEDULER
+#define HIGH      0
+#define DEFAULTPRIO   1
+#define LOW       2
+#define SIZE      3
+#define COUNT     4500
+#endif
 
 // Per-CPU state
 struct cpu {
@@ -70,6 +78,10 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
+#ifdef CS333_SCHEDULER
+  struct proc * next;          // Points to the next process in a list
+  int priority;                // Holds the priority level;
+#endif
 };
 
 

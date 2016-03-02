@@ -155,3 +155,19 @@ sys_getprocs(void) {
     }
     return getProcInfo(max, table);
 }
+
+// Used to change the priority of a process
+int
+sys_setpriority(void) {
+    int pid;
+    int priority;
+
+    if (argint(0, (void*)&pid) < 0 || argint(1, (void*)&priority) < 0) {
+        return -1;
+    }
+
+    if (priority > 2 || priority < 0 || pid < 0) 
+        return -1;
+
+    return setPriority(pid, priority); 
+}

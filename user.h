@@ -31,6 +31,7 @@ int getppid(void); //Process ID of the parent process
 int setuid(int); //Set UID to int
 int setgid(int); //Set GID to int
 int getprocs(int, struct uproc*); //Retrieves the current processes up to max
+int setpriority(int pid, int priority); //Sets a process's priorty
 
 // ulib.c
 int stat(char*, struct stat*);

@@ -15,11 +15,11 @@ main(int argc, char * argv[])
     }
 
     int i;
-    printf(1, "pid  uid  gid  ppid  state  sz  nm\n");
+    printf(1, "pid  uid  gid  ppid  state prio sz  nm\n");
     for (i = 0; i < size; ++i) {
-        printf(1, "%d  %d  %d  %d  %s  %d  %s\n", 
+        printf(1, "%d  %d  %d  %d  %s %d  %d  %s\n", 
                 p[i].pid, p[i].gid, p[i].uid, p[i].ppid, p[i].state,
-                p[i].size, p[i].name);
+                p[i].priority, p[i].size, p[i].name);
     }
     exit();
 }
